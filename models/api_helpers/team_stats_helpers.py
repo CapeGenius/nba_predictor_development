@@ -96,7 +96,7 @@ def load_dataframe(columns=["CONF_RANK"]):
 
 def api_dataframe(columns=["CONF_RANK"]):
     # list of columns for the data frame from the CSV
-    column_list = ["YEAR", "TEAM_ID", "NBA_FINALS_APPEARANCE"] + columns
+    column_list = ["YEAR", "TEAM_ID"] + columns
 
     # gets a list of all teams
     team_id = find_team_id()
