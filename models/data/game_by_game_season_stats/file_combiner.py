@@ -34,4 +34,7 @@ combined_df = pd.concat(dfs, ignore_index=True)
 
 # Now combined_df contains all rows from all original DataFrames
 
-combined_df.to_csv("combined_data_2010-2023.csv", index=False)
+combined_df.to_csv(
+    "/home/swisnoski/nba_predictor_development/models/data/combined_data_2010-2023.csv",
+    index=False,
+)
