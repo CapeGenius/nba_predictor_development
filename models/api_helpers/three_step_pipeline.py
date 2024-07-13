@@ -9,6 +9,7 @@ from sklearn.ensemble import RandomForestRegressor
 from numpy import absolute
 from numpy import mean
 from numpy import std
+from tensorflow.keras.models import model_from_json
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import RepeatedKFold
@@ -16,19 +17,72 @@ from sklearn.model_selection import RepeatedKFold
 
 class ThreeStepPipeline(ABC):
 
-    def __init__(self, team_a_id, team_b_id) -> None:
+    def __init__(self, matchup) -> None:
         super().__init__()
 
-        matchup_regressor = Matchup_Regressor()
+        self.team_a_id, self.team_b_id = self.get_team_ids(matchup=matchup)
+
+        self.matchup_rfe = Matchup_Regressor(
+            team_a_id=self.team_a_id, team_b_id=self.team_b_id
+        )
+        self.neural_network = DNNClassifier()
+
+    def get_team_ids(self, matchup):
+
+        team_a_id = matchup["TEAM_ID_A"]
+        team_b_id = matchup["TEAM_ID_B"]
+
+        return team_a_id, team_b_id
+
+    def seasonal_team_matchup(self):
+        team_a_row = self.matchup_rfe.team_a_row.drop(
+            self.matchup_rfe.NON_INT_COLUMNS, axis=1
+        )
+        team_b_row = self.matchup_rfe.team_b_row.drop(
+            self.matchup_rfe.NON_INT_COLUMNS, axis=1
+        )
+
+        seasonal_team_stats = pd.concat([team_a_row, team_b_row], axis=1)
+
+        return seasonal_team_stats
+
+    def make_prediction(self):
+        # declare variables
+        rfe = self.matchup_rfe.rfe
+        dnn = self.neural_network.network
+
+        # get team stats
+        seasonal_team_stats = self.seasonal_team_matchup()
+
+        # predict outcome of game
+        game_stat = rfe.predict(seasonal_team_stats)
+
+        game_prediction = dnn.predict(game_stat)
+
+        return game_prediction
 
 
-class NNClassifier(ABC):
+class DNNClassifier(ABC):
 
     def __init__(self) -> None:
         super().__init__()
+        self.network = self.initialize_network()
 
     def initialize_network(self):
-        pass
+        json_file = open("tuned_nn.json", "r")
+        loaded_model_json = json_file.read()
+        json_file.close()
+        loaded_model = model_from_json(loaded_model_json)
+        # load weights into new model
+        loaded_model.load_weights("tuned.weights.h5")
+        print("Loaded model from disk")
+
+        # evaluate loaded model on test data
+        loaded_model.compile(
+            loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"]
+        )
+
+        return loaded_model
 
 
 class Matchup_Regressor(ABC):
@@ -36,6 +90,8 @@ class Matchup_Regressor(ABC):
     def __init__(self, team_a_id, team_b_id) -> None:
         super().__init__()
 
+        self.team_a_id = team_a_id
+        self.team_b_id = team_b_id
         self.nba_dataframe, self.dataframe_2023 = self.data_preparation()
         self.NON_INT_COLUMNS = ["TEAM_ID", "SEASON_ID", "NBA_FINALS_APPEARANCE"]
         self.all_games_df = pd.read_csv("data/all_games.csv")
@@ -65,6 +121,22 @@ class Matchup_Regressor(ABC):
         output_features = output_a_features + output_b_features
 
         return output_features
+
+    @property
+    def team_a_row(self):
+        team_a_row = self.dataframe_2023[
+            self.dataframe_2023["TEAM_ID"] == self.team_a_id
+        ]
+
+        return team_a_row
+
+    @property
+    def team_b_row(self):
+        team_b_row = self.dataframe_2023[
+            self.dataframe_2023["TEAM_ID"] == self.team_b_id
+        ]
+
+        return team_b_row
 
     def data_preparation(self):
         nba_dataframe = load_dataframe(
