@@ -2,13 +2,36 @@ from abc import ABC
 from scipy.spatial import distance
 import numpy as np
 import pandas as pd
-from team_stats_helpers import load_dataframe
-from game_stats_helpers import home_matchups
+from api_helpers.team_stats_helpers import load_dataframe
+from api_helpers.game_stats_helpers import home_matchups
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
+from numpy import absolute
+from numpy import mean
+from numpy import std
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import RepeatedKFold
 
 
-class ThreeStepModel(ABC):
+class ThreeStepPipeline(ABC):
+
+    def __init__(self, team_a_id, team_b_id) -> None:
+        super().__init__()
+
+        matchup_regressor = Matchup_Regressor()
+
+
+class NNClassifier(ABC):
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def initialize_network(self):
+        pass
+
+
+class Matchup_Regressor(ABC):
 
     def __init__(self, team_a_id, team_b_id) -> None:
         super().__init__()
@@ -116,6 +139,8 @@ class ThreeStepModel(ABC):
         final = pd.DataFrame()
         final_stats_list = []
 
+        print(type(joined))
+
         for i in range(len(joined)):
             row = joined.iloc[i]
 
@@ -138,7 +163,7 @@ class ThreeStepModel(ABC):
         # dataframe of team stats (input data)
         final_stats_df = pd.concat(final_stats_list, axis=0)
 
-        final_stats_df, final
+        return final_stats_df, final
 
     def regressor_preprocessing(self, team_a_id, team_b_id):
 
@@ -155,7 +180,12 @@ class ThreeStepModel(ABC):
             similar_rows_1=similar_rows_1, team_b_row=team_b_row
         )
 
+        # print(joined_teams)
+
         input_team_stats, output_matchup_stats = self.get_matchups(joined=joined_teams)
+
+        print(input_team_stats)
+        print(output_matchup_stats)
 
         return input_team_stats, output_matchup_stats
 
@@ -164,7 +194,10 @@ class ThreeStepModel(ABC):
         X, y = self.regressor_preprocessing(team_a_id=team_a_id, team_b_id=team_b_id)
 
         X = X[self.input_features]
-        y = y[self.input_features]
+        y = y[self.output_features]
+
+        print(X)
+        print(y)
 
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=3
@@ -183,3 +216,22 @@ class ThreeStepModel(ABC):
         rfe.fit(self.X_train, self.y_train)
 
         return rfe
+
+    def evaluate_random_forest(self):
+        # define model
+        model = RandomForestRegressor()
+        # define the evaluation procedure
+        cv = RepeatedKFold(n_splits=10, n_repeats=3, random_state=1)
+        # evaluate the model and collect the scores
+        n_scores = cross_val_score(
+            model,
+            self.X_train,
+            self.y_train,
+            scoring="neg_mean_absolute_error",
+            cv=cv,
+            n_jobs=-1,
+        )
+        # force the scores to be positive
+        n_scores = absolute(n_scores)
+        # summarize performance
+        print("MAE: %.3f (%.3f)" % (mean(n_scores), std(n_scores)))
