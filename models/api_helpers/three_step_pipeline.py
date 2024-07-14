@@ -13,6 +13,9 @@ from tensorflow.keras.models import model_from_json
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import RepeatedKFold
+from sklearn.preprocessing import StandardScaler
+import joblib
+import sys
 
 
 class ThreeStepPipeline(ABC):
@@ -21,6 +24,7 @@ class ThreeStepPipeline(ABC):
         super().__init__()
 
         self.team_a_id, self.team_b_id = self.get_team_ids(matchup=matchup)
+        print("Team_A_ID is", self.team_a_id)
 
         self.matchup_rfe = Matchup_Regressor(
             team_a_id=self.team_a_id, team_b_id=self.team_b_id
@@ -29,12 +33,13 @@ class ThreeStepPipeline(ABC):
 
     def get_team_ids(self, matchup):
 
-        team_a_id = matchup["TEAM_ID_A"]
-        team_b_id = matchup["TEAM_ID_B"]
+        team_a_id = int(matchup["TEAM_ID_A"])
+        team_b_id = int(matchup["TEAM_ID_B"])
 
         return team_a_id, team_b_id
 
     def seasonal_team_matchup(self):
+        # print(self.matchup_rfe.team_a_row)
         team_a_row = self.matchup_rfe.team_a_row.drop(
             self.matchup_rfe.NON_INT_COLUMNS, axis=1
         )
@@ -42,22 +47,36 @@ class ThreeStepPipeline(ABC):
             self.matchup_rfe.NON_INT_COLUMNS, axis=1
         )
 
+        team_b_row = team_b_row.add_suffix("_B")
+
         seasonal_team_stats = pd.concat([team_a_row, team_b_row], axis=1)
+
+        seasonal_team_stats = seasonal_team_stats[self.matchup_rfe.input_features]
 
         return seasonal_team_stats
 
     def make_prediction(self):
+        scaler = joblib.load("data/std_scaler.bin")
+
         # declare variables
+        scaler = StandardScaler()
         rfe = self.matchup_rfe.rfe
         dnn = self.neural_network.network
 
         # get team stats
         seasonal_team_stats = self.seasonal_team_matchup()
+        # print(seasonal_team_stats)
 
         # predict outcome of game
         game_stat = rfe.predict(seasonal_team_stats)
 
+        game_stat = scaler.transform(game_stat)
+
+        print(game_stat)
+
         game_prediction = dnn.predict(game_stat)
+
+        print("\nThe outcome of this game is", game_prediction)
 
         return game_prediction
 
@@ -125,7 +144,7 @@ class Matchup_Regressor(ABC):
     @property
     def team_a_row(self):
         team_a_row = self.dataframe_2023[
-            self.dataframe_2023["TEAM_ID"] == self.team_a_id
+            self.dataframe_2023["TEAM_ID"] == int(self.team_a_id)
         ]
 
         return team_a_row
@@ -211,7 +230,7 @@ class Matchup_Regressor(ABC):
         final = pd.DataFrame()
         final_stats_list = []
 
-        print(type(joined))
+        # print(type(joined))
 
         for i in range(len(joined)):
             row = joined.iloc[i]
@@ -256,8 +275,8 @@ class Matchup_Regressor(ABC):
 
         input_team_stats, output_matchup_stats = self.get_matchups(joined=joined_teams)
 
-        print(input_team_stats)
-        print(output_matchup_stats)
+        # print(input_team_stats)
+        # print(output_matchup_stats)
 
         return input_team_stats, output_matchup_stats
 
@@ -268,8 +287,8 @@ class Matchup_Regressor(ABC):
         X = X[self.input_features]
         y = y[self.output_features]
 
-        print(X)
-        print(y)
+        # print(X)
+        # print(y)
 
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=3
