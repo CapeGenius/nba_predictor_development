@@ -9,6 +9,7 @@ from sklearn.ensemble import RandomForestRegressor
 from numpy import absolute
 from numpy import mean
 from numpy import std
+from sklearn.model_selection import cross_val_score, KFold
 from tensorflow.keras.models import model_from_json
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import cross_val_score
@@ -19,6 +20,11 @@ import sys
 
 
 class ThreeStepPipeline(ABC):
+    """
+    Hybrid model of a three step pipeline, consisting of one vector
+    search algorithm and two models to predict the outcome of games.
+    The two models are random forest regressor and neural network
+    """
 
     def __init__(self, matchup) -> None:
         super().__init__()
@@ -32,6 +38,17 @@ class ThreeStepPipeline(ABC):
         self.neural_network = DNNClassifier()
 
     def get_team_ids(self, matchup):
+        """
+        Gets the NBA team ids
+
+        Arguments:
+            matchup: pd dataframe that represents the matchup between
+            team a and team b
+
+        Returns:
+            team_a_id: integer value that represents team A's id
+            team_b_id: integer value that represents team B's id
+        """
 
         team_a_id = int(matchup["TEAM_ID_A"])
         team_b_id = int(matchup["TEAM_ID_B"])
@@ -39,6 +56,17 @@ class ThreeStepPipeline(ABC):
         return team_a_id, team_b_id
 
     def seasonal_team_matchup(self):
+        """
+        Concatenates the seasonal stats of Team A and Team B
+        into one dataframe row
+
+        Arguments:
+            None
+
+        Returns:
+            seasonal_team_stats: concatenated dataframe row
+            of Team A and Team B's seasonal stats
+        """
         # print(self.matchup_rfe.team_a_row)
         team_a_row = self.matchup_rfe.team_a_row.drop(
             self.matchup_rfe.NON_INT_COLUMNS, axis=1
@@ -49,29 +77,41 @@ class ThreeStepPipeline(ABC):
 
         team_b_row = team_b_row.add_suffix("_B")
 
-        seasonal_team_stats = pd.concat([team_a_row, team_b_row], axis=1)
+        seasonal_team_stats = pd.concat(
+            [team_a_row.reset_index(drop=True), team_b_row.reset_index(drop=True)],
+            axis=1,
+        )
 
         seasonal_team_stats = seasonal_team_stats[self.matchup_rfe.input_features]
 
         return seasonal_team_stats
 
     def make_prediction(self):
-        scaler = joblib.load("data/std_scaler.bin")
+        """
+        Integrates the Random Forest Regressor with the Neural Network
+        to get a prediction on a specific matchup between two teams
+
+        Arguments:
+            None
+
+        Returns:
+            game_prediction: array reflecting the outcome of a game
+        """
+        scaler = joblib.load("scaler.bin")
 
         # declare variables
-        scaler = StandardScaler()
         rfe = self.matchup_rfe.rfe
         dnn = self.neural_network.network
 
         # get team stats
-        seasonal_team_stats = self.seasonal_team_matchup()
-        # print(seasonal_team_stats)
+        seasonal_team_stats = np.asarray(self.seasonal_team_matchup())
+
+        # print("The length is", seasonal_team_stats)
 
         # predict outcome of game
         game_stat = rfe.predict(seasonal_team_stats)
 
         game_stat = scaler.transform(game_stat)
-
         print(game_stat)
 
         game_prediction = dnn.predict(game_stat)
@@ -82,6 +122,10 @@ class ThreeStepPipeline(ABC):
 
 
 class DNNClassifier(ABC):
+    """
+    Deep Neural Network classifier to predict the outcome
+    of games based on matchup statistics
+    """
 
     def __init__(self) -> None:
         super().__init__()
@@ -96,15 +140,15 @@ class DNNClassifier(ABC):
         loaded_model.load_weights("tuned.weights.h5")
         print("Loaded model from disk")
 
-        # evaluate loaded model on test data
-        loaded_model.compile(
-            loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"]
-        )
-
         return loaded_model
 
 
 class Matchup_Regressor(ABC):
+    """
+    Class to represent random forest regression that predicts
+    the outcome of a game between two teams based on both team's
+    seasonal statistics
+    """
 
     def __init__(self, team_a_id, team_b_id) -> None:
         super().__init__()
@@ -158,6 +202,21 @@ class Matchup_Regressor(ABC):
         return team_b_row
 
     def data_preparation(self):
+        """
+        Cleans and processes two dataframes of NBA seasonal statistics. NBA_dataframe
+        represents all seasons except the current season and the dataframe_2023 represents
+        the current season. Removes data that has NAN as values
+
+        Arguments:
+            None
+
+        Returns:
+            nba_dataframe: dataframe that represents all team seasonal statistics except
+                the current season
+            dataframe_2023: dataframe that represents team seasonal statistics for current
+                season
+
+        """
         nba_dataframe = load_dataframe(
             ["FGM", "FGA", "FG_PCT", "FG3A", "FTM", "OREB", "DREB", "REB", "AST", "PTS"]
         )
@@ -183,6 +242,24 @@ class Matchup_Regressor(ABC):
         return nba_dataframe, dataframe_2023
 
     def closest_teams(self, target, vectors_frame, k=1):
+        """
+        Utilizes cdist to find the closest performing teams for a given
+        k value any given target team, comparing the target team seasonal
+        statistics to the seasonal statistics of all nba teams.
+
+        Arguments:
+            target: a dataframe representing the seasonal statline of a
+                desired nba team
+            vectors_frame = a dataframe representing specified NBA teams
+                to compare to
+            k: integer value representing the number of k teams to compare
+                data to
+
+        Returns:
+            dataframe of all the closest teams in the history of the NBA
+            to the target NBA team.
+
+        """
 
         vectors = np.array(vectors_frame.drop(self.NON_INT_COLUMNS, axis=1))
 
@@ -194,6 +271,25 @@ class Matchup_Regressor(ABC):
         return vectors_frame.iloc[list(closest_indices[:k])]
 
     def join_teams(self, similar_rows_1, team_b_row):
+        """
+        Creates a dataframe that finds matchups of k teams, similar
+        to team A competing against k teams, similar to team b.
+
+        Using a dataframe of teams similar to team A, this algorithm
+        then finds the corresponding teams similar to team B from
+        the same season as team A. Then, it creates a concatenated
+        dataframe that creates the input training set for the random forest
+        regressor.
+
+        Arguments:
+            similar_rows_1: dataframe representing teams that
+            are similar to team A
+            team: dataframe row representing teams B
+
+        Returns:
+            final_joined: a concatenated dataframe that creates the
+            training set for the random forest regressor.
+        """
         joined_list = []
         for _, row in similar_rows_1.iterrows():
             k = 5
@@ -227,6 +323,21 @@ class Matchup_Regressor(ABC):
         return final_joined
 
     def get_matchups(self, joined):
+        """
+        Using the concatenated table of similar teams, get matchups()
+        finds all the matchups between those teams in a dataframe and
+        returns them to be used a output training set
+
+        Arguments:
+            joined: concatenated dataframe representing a table of
+            seasonal "matchup" statistics between similar teams
+        Returns:
+            final_stats_df: concatenated dataframe representing a table of
+                seasonal "matchup" statistics between similar teams
+                (input dataset)
+            final: dataframe of all the matchups between those teams
+            in a dataframe and returns them to be used a output training set
+        """
         final = pd.DataFrame()
         final_stats_list = []
 
@@ -257,6 +368,20 @@ class Matchup_Regressor(ABC):
         return final_stats_df, final
 
     def regressor_preprocessing(self, team_a_id, team_b_id):
+        """
+        Preprocessing step to get all input and output data
+        necessary for training the model
+
+        Arguments:
+            team_a_id: int representing the team A id
+            team_b_id: int representing the team B id
+
+        Returns:
+            input_team_stats: dataframe representing the input
+                dataframe (representing all seasonal team matchups)
+            output_matchup_stats: dataframe representing the
+                output dataframe (representing all individual game matchups)
+        """
 
         team_a_row = self.dataframe_2023[self.dataframe_2023["TEAM_ID"] == team_a_id]
         team_b_row = self.dataframe_2023[self.dataframe_2023["TEAM_ID"] == team_b_id]
@@ -281,6 +406,19 @@ class Matchup_Regressor(ABC):
         return input_team_stats, output_matchup_stats
 
     def regressor_preparation(self, team_a_id, team_b_id):
+        """
+        Creates a test train split for the regressor, after receiving
+        the input and output data. (Code can be modified to return test
+        train split data)
+
+        Arguments:
+            team_a_id: int representing the team A id
+            team_b_id: int representing the team B id
+
+        Returns:
+            X: datframe reprsenting all input data
+            y: dataframe representing all output data
+        """
 
         X, y = self.regressor_preprocessing(team_a_id=team_a_id, team_b_id=team_b_id)
 
@@ -294,21 +432,38 @@ class Matchup_Regressor(ABC):
             X, y, test_size=0.2, random_state=3
         )
 
-        return X_train, X_test, y_train, y_test
+        return X, y
 
     def random_forest(self, team_a_id, team_b_id):
+        """
+        Generates random forest using team A id and team
+        B id to train the random forest on team seasonal
+        statistics and the predicted outcome of the matchpu
 
-        self.X_train, self.X_test, self.y_train, self.y_test = (
-            self.regressor_preparation(team_a_id=team_a_id, team_b_id=team_b_id)
+        Arguments:
+            team_a_id: int representing the team A id
+            team_b_id: int representing the team B id
+
+        Returns:
+            rfe: fitted Random Forest Regressor object for a
+            given matchup between two teams
+        """
+        self.X, self.y = self.regressor_preparation(
+            team_a_id=team_a_id, team_b_id=team_b_id
         )
 
         rfe = RandomForestRegressor(random_state=10, n_estimators=1000)
 
-        rfe.fit(self.X_train, self.y_train)
+        cross_val_score(rfe)
+
+        rfe.fit(self.X, self.y)
 
         return rfe
 
     def evaluate_random_forest(self):
+        """
+        Evaluates the random forest
+        """
         # define model
         model = RandomForestRegressor()
         # define the evaluation procedure
