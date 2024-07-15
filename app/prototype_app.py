@@ -8,7 +8,7 @@ st.title("Prototype App")
 
 
 if "date" not in st.session_state:
-    start_date = "04/02/22"
+    start_date = "04/03/22"
     date_1 = datetime.strptime(start_date, "%m/%d/%y")
     st.session_state.date = date_1
 
@@ -23,8 +23,10 @@ if "current_schedule" not in st.session_state:
         st.session_state.current_schedule.get_dataframe()
     )
 
-for i, row in st.session_state.current_schedule_df.iterrows():
-    ht_team = str(row["htCity"]) + " " + str(row["htCity"])
-    vt_team = str(row["vtCity"]) + " " + str(row["vtCity"])
 
-    st.markdown(ht_team + " vs. " + vt_team + " @ " + str((row["htCity"])))
+for i, row in st.session_state.current_schedule_df.iterrows():
+    c = st.container(border=True)
+    ht_team = str(row["htCity"]) + " " + str(row["htNickName"])
+    vt_team = str(row["vtCity"]) + " " + str(row["vtNickName"])
+
+    c.write(ht_team + " vs. " + vt_team + " @ " + str((row["htCity"])))
