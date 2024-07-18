@@ -1,10 +1,26 @@
 from datetime import datetime
 from datetime import timedelta
-from generate_schedule import NBADaySchedule
+import numpy as np
 
+from generate_schedule import NBADaySchedule
+import pandas as pd
+
+import os
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+import sys
+
+# append the path of the parent directory
+sys.path.append("./models")
+
+from api_helpers.three_step_pipeline import ThreeStepPipeline
 import streamlit as st
 
 st.title("Prototype App")
+
+if "all_games" not in st.session_state:
+    all_games_df = pd.read_csv("models/data/all_games.csv")
+    st.session_state.all_games = all_games_df
 
 
 if "date" not in st.session_state:
@@ -28,5 +44,24 @@ for i, row in st.session_state.current_schedule_df.iterrows():
     c = st.container(border=True)
     ht_team = str(row["htCity"]) + " " + str(row["htNickName"])
     vt_team = str(row["vtCity"]) + " " + str(row["vtNickName"])
+    game_id = str(row["gameID"])
+
+    matchup = st.session_state.all_games[
+        st.session_state.all_games["GAME_ID"] == int(game_id)
+    ]
+
+    # print("\n \n The matchup is", matchup.to_string())
+
+    current_pipeline = ThreeStepPipeline(matchup=matchup)
 
     c.write(ht_team + " vs. " + vt_team + " @ " + str((row["htCity"])))
+
+    game_prediction = current_pipeline.make_prediction()
+    # c.write(type(game_prediction))
+
+    c.write(
+        "\nThe predicted winner of this match will be"
+        + np.array2string(game_prediction)
+    )
+
+    c.write("\nThe winner of this match will be " + str(matchup["WL_A"].values[0]))
