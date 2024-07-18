@@ -1,5 +1,5 @@
 from nba_api.stats.static import teams
-from team_stats_helpers import find_team_id
+from api_helpers.team_stats_helpers import find_team_id
 from nba_api.stats.endpoints import boxscoretraditionalv2
 from nba_api.stats.endpoints import leaguegamefinder
 import pandas as pd
@@ -62,6 +62,17 @@ def combine_team_games(df, keep_method="home"):
     else:
         raise ValueError(f"Invalid keep_method: {keep_method}")
     return result
+
+
+def home_matchups(all_games_df, team_a, team_b, year):
+
+    matchup_1 = all_games_df[
+        (all_games_df["TEAM_ID_A"] == int(team_a))
+        & (all_games_df["TEAM_ID_B"] == int(team_b))
+        & (all_games_df["SEASON_ID"] == int(year))
+    ]
+
+    return matchup_1
 
 
 def find_matchups(all_games_df, team_a, team_b):

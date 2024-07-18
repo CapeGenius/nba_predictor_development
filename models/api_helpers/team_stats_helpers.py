@@ -89,7 +89,10 @@ def load_dataframe(columns=["CONF_RANK"]):
     column_list = ["YEAR", "TEAM_ID", "NBA_FINALS_APPEARANCE"] + columns
 
     # data frame of the year, team_id, and specified statistic
-    data_frame = pd.read_csv("data/team_year_stats.csv", usecols=column_list)
+    data_frame = pd.read_csv(
+        "models/data/team_year_stats.csv",
+        usecols=column_list,
+    )
 
     return data_frame
 

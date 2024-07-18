@@ -50,6 +50,9 @@ class ThreeStepPipeline(ABC):
             team_b_id: integer value that represents team B's id
         """
 
+        print("The matchup is", matchup.to_string())
+        print("The matchup is", matchup["TEAM_ID_A"].to_string())
+
         team_a_id = int(matchup["TEAM_ID_A"])
         team_b_id = int(matchup["TEAM_ID_B"])
 
@@ -97,7 +100,7 @@ class ThreeStepPipeline(ABC):
         Returns:
             game_prediction: array reflecting the outcome of a game
         """
-        scaler = joblib.load("scaler.bin")
+        scaler = joblib.load("models/scaler.bin")
 
         # declare variables
         rfe = self.matchup_rfe.rfe
@@ -132,12 +135,12 @@ class DNNClassifier(ABC):
         self.network = self.initialize_network()
 
     def initialize_network(self):
-        json_file = open("tuned_nn.json", "r")
+        json_file = open("models/tuned_nn.json", "r")
         loaded_model_json = json_file.read()
         json_file.close()
         loaded_model = model_from_json(loaded_model_json)
         # load weights into new model
-        loaded_model.load_weights("tuned.weights.h5")
+        loaded_model.load_weights("models/tuned.weights.h5")
         print("Loaded model from disk")
 
         return loaded_model
@@ -157,7 +160,7 @@ class Matchup_Regressor(ABC):
         self.team_b_id = team_b_id
         self.nba_dataframe, self.dataframe_2023 = self.data_preparation()
         self.NON_INT_COLUMNS = ["TEAM_ID", "SEASON_ID", "NBA_FINALS_APPEARANCE"]
-        self.all_games_df = pd.read_csv("data/all_games.csv")
+        self.all_games_df = pd.read_csv("models/data/all_games.csv")
         self.rfe = self.random_forest(team_a_id=team_a_id, team_b_id=team_b_id)
 
     @property
@@ -217,6 +220,7 @@ class Matchup_Regressor(ABC):
                 season
 
         """
+        sys.path.append("./models")
         nba_dataframe = load_dataframe(
             ["FGM", "FGA", "FG_PCT", "FG3A", "FTM", "OREB", "DREB", "REB", "AST", "PTS"]
         )
@@ -453,8 +457,6 @@ class Matchup_Regressor(ABC):
         )
 
         rfe = RandomForestRegressor(random_state=10, n_estimators=1000)
-
-        cross_val_score(rfe)
 
         rfe.fit(self.X, self.y)
 
