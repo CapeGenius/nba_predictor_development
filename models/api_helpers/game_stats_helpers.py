@@ -89,3 +89,35 @@ def find_matchups(all_games_df, team_a, team_b):
     all_matchups = pd.concat([matchup_1, matchup_2])
 
     return all_matchups
+
+
+def avg_last_n_games(all_games_df: pd.DataFrame, columns: list, team="TEAM_ID_A", n=5):
+
+    avg_df = pd.DataFrame()
+
+    team_ids = [team_id[0] for team_id in find_team_id()]
+
+    for team_id in team_ids:
+        team_df = all_games_df[all_games_df[team] == team_id]
+        team_mean = team_df[columns].rolling(window=5).mean()
+
+        avg_df = pd.concat([avg_df, team_mean])
+
+    return avg_df
+
+
+def load_past_n_games(
+    all_games_df: pd.DataFrame,
+    columns: list = ["FG_PCT", "FG3_PCT", "FTM", "OREB", "DREB", "REB", "AST"],
+    n=5,
+):
+    string_columns = ["GAME_ID", "TEAM_ID_A", "TEAM_ID_B", "GAME_ID", "WL_A"]
+    columns_a = [column + "_A" for column in columns]
+    columns_b = [column + "_B" for column in columns]
+
+    a_avg_df = avg_last_n_games(all_games_df, columns_a, team="TEAM_ID_A", n=n)
+    b_avg_df = avg_last_n_games(all_games_df, columns_b, team="TEAM_ID_B", n=n)
+
+    last_n_df = pd.concat([all_games_df[string_columns], a_avg_df, b_avg_df], axis=1)
+
+    return last_n_df
