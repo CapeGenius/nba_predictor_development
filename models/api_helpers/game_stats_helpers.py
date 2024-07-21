@@ -93,6 +93,7 @@ def find_matchups(all_games_df, team_a, team_b):
 
 def avg_last_n_games(all_games_df: pd.DataFrame, columns: list, team="TEAM_ID_A", n=5):
 
+    all_games_df.sort_values(by="GAME_DATE")
     avg_df = pd.DataFrame()
 
     team_ids = [team_id[0] for team_id in find_team_id()]
@@ -111,6 +112,7 @@ def load_past_n_games(
     columns: list = ["FG_PCT", "FG3_PCT", "FTM", "OREB", "DREB", "REB", "AST"],
     n=5,
 ):
+    all_games_df.sort_values(by="GAME_DATE")
     string_columns = ["GAME_ID", "TEAM_ID_A", "TEAM_ID_B", "GAME_ID", "WL_A"]
     columns_a = [column + "_A" for column in columns]
     columns_b = [column + "_B" for column in columns]
