@@ -101,8 +101,11 @@ def avg_last_n_games(all_games_df: pd.DataFrame, columns: list, team="TEAM_ID_A"
     for team_id in team_ids:
         team_df = all_games_df[all_games_df[team] == team_id]
 
-        team_mean = team_df.groupby(["GAME_DATE"])[columns].transform(
-            lambda x: x.rolling(5).mean()
+        team_mean = (
+            team_df.groupby(["GAME_DATE"])[columns]
+            .transform(lambda x: x.rolling(window=5, min_periods=1).mean())
+            .shift()
+            .bfill()
         )
 
         avg_df = pd.concat([avg_df, team_mean])
@@ -121,6 +124,7 @@ def load_past_n_games(
     columns_b = [column + "_B" for column in columns]
 
     a_avg_df = avg_last_n_games(all_games_df, columns_a, team="TEAM_ID_A", n=n)
+    a_avg_df.to_csv("test_data.csv")
     b_avg_df = avg_last_n_games(all_games_df, columns_b, team="TEAM_ID_B", n=n)
 
     last_n_df = pd.concat([all_games_df[string_columns], a_avg_df, b_avg_df], axis=1)
