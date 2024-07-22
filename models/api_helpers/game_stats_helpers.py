@@ -102,10 +102,7 @@ def avg_last_n_games(all_games_df: pd.DataFrame, columns: list, team="TEAM_ID_A"
         team_df = all_games_df[all_games_df[team] == team_id]
 
         team_mean = (
-            team_df.groupby(["GAME_DATE"])[columns]
-            .transform(lambda x: x.rolling(window=5, min_periods=1).mean())
-            .shift()
-            .bfill()
+            team_df[columns].rolling(window=5, min_periods=1).mean().shift().bfill()
         )
 
         avg_df = pd.concat([avg_df, team_mean])
