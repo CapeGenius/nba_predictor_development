@@ -90,7 +90,7 @@ def load_dataframe(columns=["CONF_RANK"]):
 
     # data frame of the year, team_id, and specified statistic
     data_frame = pd.read_csv(
-        "models/data/team_year_stats.csv",
+        "data/team_year_stats.csv",
         usecols=column_list,
     )
 
