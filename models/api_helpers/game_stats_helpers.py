@@ -126,4 +126,39 @@ def load_past_n_games(
 
     last_n_df = pd.concat([all_games_df[string_columns], a_avg_df, b_avg_df], axis=1)
 
+    last_n_df = last_n_df.dropna()
+
     return last_n_df
+
+
+def load_x_y(
+    all_games_df: pd.DataFrame,
+    columns: list = ["FG_PCT", "FG3_PCT", "FTM", "OREB", "DREB", "REB", "AST"],
+    n=5,
+):
+
+    string_columns = ["GAME_ID", "TEAM_ID_A", "TEAM_ID_B", "GAME_ID", "WL_A"]
+    columns_a = [column + "_A" for column in columns]
+    columns_b = [column + "_B" for column in columns]
+
+    last_n_games = load_past_n_games(all_games_df=all_games_df, columns=columns, n=n)
+
+    columns_x = columns_a + columns_b
+
+    columns_x = [column + "_x" for column in columns_x]
+    merged_data = pd.merge(
+        all_games_df[columns_a + columns_b],
+        last_n_games,
+        left_index=True,
+        right_index=True,
+    )
+
+    columns_x = columns_a + columns_b
+    columns_x = [column + "_x" for column in columns_x]
+    X = merged_data[columns_x]
+
+    columns_y = columns_a + columns_b
+    columns_y = [column + "_y" for column in columns_y]
+    y = merged_data[columns_y]
+
+    return X, y
