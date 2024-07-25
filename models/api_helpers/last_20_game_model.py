@@ -3,9 +3,16 @@ import sys
 from nba_api.stats.endpoints import leaguegamefinder
 import os
 import pandas as pd
-from game_stats_helpers import load_past_n_games
+from api_helpers.game_stats_helpers import load_past_n_games
+from api_helpers.game_stats_helpers import matchup_past_n_games
+import joblib
+
 import sklearn.preprocessing as skp
 import pickle
+
+columns = ["FG_PCT","FT_PCT", "OREB", "TOV"]
+all_games_df = pd.read_csv("models/data/all_games.csv")
+last_20_games = load_past_n_games(all_games_df, columns, n=20)
 
 class Last20Model(ABC):
     '''
@@ -15,33 +22,33 @@ class Last20Model(ABC):
 
     def __init__(self, matchup) -> None:
         super().__init__()
+        self.matchup = matchup
+        self.team_a_id, self.team_b_id, self.match_date = self.get_game_info(matchup=matchup)
         self.columns = ["FG_PCT","FT_PCT", "OREB", "TOV"]
         self.all_games_df = pd.read_csv("models/data/all_games.csv")
-        self.team_a_id, self.team_b_id, self.game_date = self.get_game_info(matchup=matchup)
-        self.all_games_df = pd.read_csv("models/data/all_games.csv")
         
-        self.last_20_stats = self.get_prev_stats(team_id_a=self.team_a_id, team_id_b=self.team_b_id, game_date=self.game_date)
+        self.last_20_stats = self.get_prev_stats()
         self.input_data = self.data_preprocessing(self.last_20_stats)
+        pd.DataFrame(self.input_data).to_csv("input.csv")
 
     def get_game_info(self, matchup):
-        team_a_id = int(matchup["TEAM_ID_A"])
-        team_b_id = int(matchup["TEAM_ID_B"])
-        game_date = matchup["GAME_DATE_EST"]
+        team_a_id = int(matchup["TEAM_ID_A"].iloc[0])
+        team_b_id = int(matchup["TEAM_ID_B"].iloc[0])
+        match_date = matchup["GAME_DATE"]
 
-        return team_a_id, team_b_id, game_date
+        return team_a_id, team_b_id, match_date
     
-    def get_prev_stats(self, team_id_a, team_id_b, game_date):
+    def get_prev_stats(self):
         """
         Gets the previous games played by a team
 
         Arguments:
             team_id: integer value that represents the team's id
-            game_date: date of the game
 
         Returns:
             prev_games: pd dataframe that represents the previous games played by the team
         """
-        last_20_stats = load_past_n_games(self.all_games_df, columns=self.columns, n=20)
+        last_20_stats = matchup_past_n_games(all_games_df, self.columns, self.matchup, n=20)
         return last_20_stats
     
     def data_preprocessing(self, last_20_stats: pd.DataFrame):
@@ -49,8 +56,8 @@ class Last20Model(ABC):
         Preprocesses the data for the model
         """
         #normalize x_data
-        scaler = skp.StandardScaler()
-        last_20_games_scaled = scaler.fit_transform(last_20_stats)
+        scaler = joblib.load("models/scalers/last20_8f_scaler.bin")
+        last_20_games_scaled = scaler.transform(last_20_stats)
         return last_20_games_scaled
     
     def make_prediction_gnb(self):
@@ -59,11 +66,9 @@ class Last20Model(ABC):
         """
         #load model
         loaded_model = pickle.load(open('models/saved_models/gnb_8f_20g_model.sav', 'rb'))
-        prediction = loaded_model.predict_proba(self.last_20_stats)[:,1]
+        prediction = loaded_model.predict_proba(self.input_data)[:,1]
         return prediction
         
-print(Last20Model)
-
 
 
 
