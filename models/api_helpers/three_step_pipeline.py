@@ -19,6 +19,7 @@ import joblib
 import sys
 
 
+
 class ThreeStepPipeline(ABC):
     """
     Hybrid model of a three step pipeline, consisting of one vector
@@ -100,7 +101,7 @@ class ThreeStepPipeline(ABC):
         Returns:
             game_prediction: array reflecting the outcome of a game
         """
-        scaler = joblib.load("models/scaler.bin")
+        scaler = joblib.load("models/scalers/scaler.bin")
 
         # declare variables
         rfe = self.matchup_rfe.rfe
@@ -135,12 +136,12 @@ class DNNClassifier(ABC):
         self.network = self.initialize_network()
 
     def initialize_network(self):
-        json_file = open("models/tuned_nn.json", "r")
+        json_file = open("models/weights/tuned_nn.json", "r")
         loaded_model_json = json_file.read()
         json_file.close()
         loaded_model = model_from_json(loaded_model_json)
         # load weights into new model
-        loaded_model.load_weights("models/tuned.weights.h5")
+        loaded_model.load_weights("models/weights/tuned.weights.h5")
         print("Loaded model from disk")
 
         return loaded_model
