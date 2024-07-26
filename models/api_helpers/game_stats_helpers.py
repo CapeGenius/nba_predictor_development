@@ -163,7 +163,6 @@ def load_x_y(
 
     columns_x = columns_a + columns_b
 
-    columns_x = [column + "_x" for column in columns_x]
     merged_data = pd.merge(
         all_games_df[columns_a + columns_b],
         last_n_games,
@@ -171,12 +170,10 @@ def load_x_y(
         right_index=True,
     )
 
-    columns_x = columns_a + columns_b
-    columns_x = [column + "_x" for column in columns_x]
+    merged_data.dropna(inplace=True)
+
     X = merged_data[columns_x]
 
-    columns_y = columns_a + columns_b
-    columns_y = [column + "_y" for column in columns_y]
-    y = merged_data[columns_y]
+    y = merged_data["WL_A"]
 
     return X, y
