@@ -123,7 +123,6 @@ def load_past_n_games(
     b_avg_df = avg_last_n_games(all_games_df, columns_b, team="TEAM_ID_B", n=n)
 
     last_n_df = pd.concat([all_games_df[string_columns], a_avg_df, b_avg_df], axis=1)
-    last_n_df.to_csv("test_data.csv")
 
     last_n_df = last_n_df.dropna()
 
@@ -135,28 +134,17 @@ def matchup_past_n_games(all_games_df: pd.DataFrame, columns, matchup: pd.DataFr
     all_games_df = all_games_df[all_games_df["GAME_DATE"] < matchup["GAME_DATE"].values[0]]
     
     past_games_a = all_games_df[(all_games_df["TEAM_ID_A"] == matchup["TEAM_ID_A"].values[0])].head(n)
-                                # | (all_games_df["TEAM_ID_B"] == matchup["TEAM_ID_A"].values[0])].head(n)
     past_games_b = all_games_df[(all_games_df["TEAM_ID_A"] == matchup["TEAM_ID_B"].values[0])].head(n)
-                                # | (all_games_df["TEAM_ID_B"] == matchup["TEAM_ID_B"].values[0])].head(n)
-    string_columns = ["GAME_ID", "TEAM_ID_A", "TEAM_ID_B", "GAME_DATE", "WL_A"]
-    columns_a = [column + "_A" for column in columns]
-    columns_b = [column + "_B" for column in columns]
-    
-    # a_avg_df = avg_last_n_games(past_games_a, columns_a, team="TEAM_ID_A", n=n)
-    # a_avg_df.reset_index(inplace=True)
-    # b_avg_df = avg_last_n_games(past_games_b, columns_b, team="TEAM_ID_B", n=n)
-    # b_avg_df.reset_index(inplace=True)
-    past_games_a.to_csv("test_pastgamesa_matchup.csv")
-    past_games_b.to_csv("test_pastgamesb_matchup.csv")
 
+    columns_a = [column + "_A" for column in columns]
+
+    # average last n games and format column headers
     a_avg_df = pd.DataFrame(past_games_a[columns_a].mean()).T
-    a_avg_df.to_csv("test_avga_matchup.csv")
     b_avg_df = pd.DataFrame(past_games_b[columns_a].mean()).T
     b_avg_df.columns = b_avg_df.columns.str.replace("_A", "_B")
-    b_avg_df.to_csv("test_avgb_matchup.csv")
+    
     last_n_df = pd.concat([a_avg_df, b_avg_df], axis=1)
-    # last_n_df.drop(columns=["index"], inplace=True)
-    # last_n_df.to_csv("test_data_matchup.csv")
+    
     return last_n_df
 
 

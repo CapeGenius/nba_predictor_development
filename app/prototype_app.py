@@ -59,15 +59,21 @@ for i, row in st.session_state.current_schedule_df.iterrows():
 
     game_prediction = current_pipeline.make_prediction()
     second_prediction = second_pipeline.make_prediction_gnb()
+    first_winner = ht_team if game_prediction[0][0] > 0.5 else vt_team
+    second_winner = ht_team if second_prediction > 0.5 else vt_team
+    actual_winner = ht_team if matchup["WL_A"].values[0] == "W" else vt_team
+
     # c.write(type(game_prediction))
 
     c.write(
-        "\nThe predicted winner of this match will be"
+        "\nThe predicted winner of this match will be "
+        + first_winner + " with a likelyhood of "
         + np.array2string(game_prediction)
     )
     c.write(
-        "\nThe second predicted winner of this match will be"
-        + np.array2string(second_prediction)
+        "\nThe second predicted winner of this match will be "
+        + second_winner + " with a likelyhood of " 
+        + np.array2string(second_prediction) + "%"
     )
 
-    c.write("\nThe winner of this match will be " + str(matchup["WL_A"].values[0]))
+    c.write("\nThe winner of this match will be " + str(actual_winner))

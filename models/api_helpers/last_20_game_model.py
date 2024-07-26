@@ -29,7 +29,6 @@ class Last20Model(ABC):
         
         self.last_20_stats = self.get_prev_stats()
         self.input_data = self.data_preprocessing(self.last_20_stats)
-        pd.DataFrame(self.input_data).to_csv("input.csv")
 
     def get_game_info(self, matchup):
         team_a_id = int(matchup["TEAM_ID_A"].iloc[0])
