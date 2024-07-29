@@ -10,7 +10,7 @@ from numpy import histogram
 import matplotlib.pyplot as plt
 
 
-def find_team_id():
+def find_team_id(wnba=False):
     """
     This helper function uses the API to get every single
     NBA team and its corresponding ID, taking values from
@@ -24,8 +24,10 @@ def find_team_id():
         team's ID and full name
     """
     # get_teams returns a list of 30 dictionaries, each an NBA team.
-    nba_teams = teams.get_teams()
-
+    if (wnba):
+        nba_teams = teams.get_wnba_teams()
+    else:
+        nba_teams = teams.get_teams()
     # following comprehension can be rewritten as a for loop
     team_id = [[team["id"], team["full_name"]] for team in nba_teams]
 
