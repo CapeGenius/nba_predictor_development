@@ -17,7 +17,6 @@ import seaborn as sns
 
 
 def pca(data_array):
-
     # calculate the covariance matrix
     covariance_matrix = np.cov(np.transpose(data_array))
     w, eigenvectors = np.linalg.eig(covariance_matrix)
