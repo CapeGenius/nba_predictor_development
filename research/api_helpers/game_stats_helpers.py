@@ -172,14 +172,14 @@ def matchup_past_n_games(
     all_games_df.sort_values(by="GAME_DATE")
     # get all games before game date
     all_games_df = all_games_df[
-        all_games_df["GAME_DATE"] < matchup["GAME_DATE"].values[0]
+        all_games_df["GAME_DATE"] < matchup["GAME_DATE"]
     ]
 
     past_games_a = all_games_df[
-        (all_games_df["TEAM_ID_A"] == matchup["TEAM_ID_A"].values[0])
+        all_games_df["TEAM_ID_A"] == matchup["TEAM_ID_A"]
     ].head(n)
     past_games_b = all_games_df[
-        (all_games_df["TEAM_ID_A"] == matchup["TEAM_ID_B"].values[0])
+        all_games_df["TEAM_ID_A"] == matchup["TEAM_ID_B"]
     ].head(n)
 
     columns_a = [column + "_A" for column in columns]
