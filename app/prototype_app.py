@@ -11,16 +11,18 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 import sys
 
 # append the path of the parent directory
-sys.path.append("./models")
+sys.path.append("./research")
 
-from api_helpers.three_step_pipeline import ThreeStepPipeline
-from api_helpers.last_20_game_model import Last20Model
+from selected_models.k_nearest_neighbors.knn_model import k_nearest_neighbors
+from selected_models.logistic_regression.logistic_regression import logistic_regression
+
+
 import streamlit as st
 
 st.title("Prototype App")
 
 if "all_games" not in st.session_state:
-    all_games_df = pd.read_csv("models/data/all_games.csv")
+    all_games_df = pd.read_csv("research/data/all_games.csv")
     st.session_state.all_games = all_games_df
 
 if "date" not in st.session_state:
@@ -52,28 +54,26 @@ for i, row in st.session_state.current_schedule_df.iterrows():
 
     # print("\n \n The matchup is", matchup.to_string())
 
-    current_pipeline = ThreeStepPipeline(matchup=matchup)
-    second_pipeline = Last20Model(matchup=matchup)
+    knn_model = k_nearest_neighbors()
+    lr_model = logistic_regression()
 
     c.write(ht_team + " vs. " + vt_team + " @ " + str((row["htCity"])))
 
-    game_prediction = current_pipeline.make_prediction()
-    second_prediction = second_pipeline.make_prediction_gnb()
-    first_winner = ht_team if game_prediction[0][0] > 0.5 else vt_team
-    second_winner = ht_team if second_prediction > 0.5 else vt_team
+    lr_pred = lr_model.predict(matchup)
+    knn_pred = knn_model.predict(matchup)
+    lr_winner = ht_team if lr_pred == "W" else vt_team
+    knn_winner = ht_team if knn_pred == "W" else vt_team
     actual_winner = ht_team if matchup["WL_A"].values[0] == "W" else vt_team
 
     # c.write(type(game_prediction))
 
     c.write(
         "\nThe predicted winner of this match will be "
-        + first_winner + " with a likelyhood of "
-        + np.array2string(game_prediction)
+        + lr_winner
     )
     c.write(
         "\nThe second predicted winner of this match will be "
-        + second_winner + " with a likelyhood of " 
-        + np.array2string(second_prediction) + "%"
+        + knn_winner
     )
 
     c.write("\nThe winner of this match will be " + str(actual_winner))

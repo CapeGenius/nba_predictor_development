@@ -166,20 +166,20 @@ def load_past_n_games(
     return last_n_df
 
 
-def matchup_past_n_games(
-    all_games_df: pd.DataFrame, columns, matchup: pd.DataFrame, n=5
-):
-    all_games_df.sort_values(by="GAME_DATE")
+def matchup_past_n_games(all_games_df: pd.DataFrame, columns, matchup: pd.Series, n=5):
+    all_games_df = all_games_df.sort_values(by="GAME_DATE", ascending=False)
+    all_games_df.reset_index(drop=True, inplace=True)
+    # matchup.reset_index(drop=True, inplace=True)
     # get all games before game date
     all_games_df = all_games_df[
-        all_games_df["GAME_DATE"] < matchup["GAME_DATE"]
+        all_games_df["GAME_DATE"] < matchup["GAME_DATE"].values[0]
     ]
 
     past_games_a = all_games_df[
-        all_games_df["TEAM_ID_A"] == matchup["TEAM_ID_A"]
+        all_games_df["TEAM_ID_A"] == matchup["TEAM_ID_A"].values[0]
     ].head(n)
     past_games_b = all_games_df[
-        all_games_df["TEAM_ID_A"] == matchup["TEAM_ID_B"]
+        all_games_df["TEAM_ID_A"] == matchup["TEAM_ID_B"].values[0]
     ].head(n)
 
     columns_a = [column + "_A" for column in columns]

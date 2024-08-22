@@ -23,16 +23,11 @@ class k_nearest_neighbors():
     def predict(self, matchup):
         # get avg stats of last 20 games for both teams in matchup
         team_stats = matchup_past_n_games(self.all_games_df, self.columns, matchup, n=20)
+        team_stats.fillna(0, inplace=True)
         team_stats = self.scale_data(team_stats)
         knn_model = joblib.load('research/selected_models/k_nearest_neighbors/knn_model.bin')
         prediction = knn_model.predict(team_stats)
         return prediction
-
-
-knn = k_nearest_neighbors()
-all_games_df = pd.read_csv("research/data/all_games.csv")
-example_matchup = all_games_df.iloc[0]
-print(knn.predict(example_matchup))
 
 
 
