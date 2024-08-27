@@ -35,7 +35,6 @@ class logistic_regression():
     def predict(self, matchup):
         # get avg stats of last 20 games for both teams in matchup
         team_stats = matchup_past_n_games(self.all_games_df, self.columns, matchup, n=20)
-        print(team_stats)
         team_stats.fillna(0, inplace=True)
         team_stats = self.scale_data(team_stats)
         lr_model = joblib.load('research/selected_models/logistic_regression/logistic_model.bin')
